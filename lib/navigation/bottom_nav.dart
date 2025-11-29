@@ -1,0 +1,68 @@
+import 'package:flutter/material.dart';
+import '../screens/dashboard_screen.dart';
+import '../screens/members_screen.dart';
+import '../screens/coaches_screen.dart';
+import '../screens/settings_screen.dart';
+import '../screens/finance_screen.dart';
+import '../screens/shop_screen.dart'; 
+import '../theme/app_colors.dart';
+
+class BottomNav extends StatefulWidget {
+  const BottomNav({super.key});
+
+  @override
+  State<BottomNav> createState() => _BottomNavState();
+}
+
+class _BottomNavState extends State<BottomNav> {
+  int _currentIndex = 0;
+
+  final List<Widget> _pages = const [
+    DashboardScreen(),
+    MembersScreen(),
+    CoachesScreen(),
+    FinanceScreen(),
+    ShopScreen(), // ✅ Ajouté ici
+    SettingsScreen(),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: _pages[_currentIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (i) => setState(() => _currentIndex = i),
+        selectedItemColor: AppColors.red700,
+        unselectedItemColor: Colors.grey,
+        type: BottomNavigationBarType.fixed,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.dashboard),
+            label: 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.people),
+            label: 'Members',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.fitness_center),
+            label: 'Coaches',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.attach_money),
+            label: 'Finance',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.store),
+            label: 'Shop',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
+      ),
+    );
+  }
+}
