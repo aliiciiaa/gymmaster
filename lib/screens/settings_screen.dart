@@ -14,22 +14,32 @@ class SettingsScreen extends StatelessWidget {
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
-          children: const [
-            ListTile(
+          children: [
+            const ListTile(
               leading: Icon(Icons.person),
               title: Text('Profile'),
             ),
-            ListTile(
+            const ListTile(
               leading: Icon(Icons.lock),
               title: Text('Change Password'),
             ),
-            ListTile(
+            const ListTile(
               leading: Icon(Icons.notifications),
               title: Text('Notifications'),
             ),
+
+            // ---- LOGOUT ----
             ListTile(
-              leading: Icon(Icons.logout),
-              title: Text('Logout'),
+              leading: const Icon(Icons.logout),
+              title: const Text('Logout'),
+              onTap: () {
+                // 👉 On supprime toutes les pages précédentes et on va à LoginScreen
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  '/',
+                  (route) => false,
+                );
+              },
             ),
           ],
         ),

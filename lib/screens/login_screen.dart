@@ -1,10 +1,14 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 import '../theme/app_colors.dart';
 import '../widgets/feature_item.dart';
 import '../widgets/custom_text_field.dart';
 
 class LoginScreen extends StatefulWidget {
   static const String routeName = '/';
+
   const LoginScreen({super.key});
 
   @override
@@ -12,10 +16,13 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _email = TextEditingController(text: 'owner@gymmaster.com');
+  final _email = TextEditingController();
   final _password = TextEditingController();
-  bool _remember = false;
+
   bool _pwVisible = false;
+
+  String? _errorMessage;
+  String? _successMessage;
 
   @override
   void dispose() {
@@ -24,17 +31,67 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _onSignIn() {
-    // Replace with real auth later
-    Navigator.pushReplacementNamed(context, '/app');
+  // --------------------------
+  // LOGIN FLUTTER → PHP
+  // --------------------------
+  Future<void> _onSignIn() async {
+    setState(() {
+      _errorMessage = null;
+      _successMessage = null;
+    });
+
+    // Champs obligatoires
+    if (_email.text.isEmpty || _password.text.isEmpty) {
+      setState(() {
+        _errorMessage = "Veuillez remplir tous les champs.";
+      });
+      return;
+    }
+
+    // Format email
+    if (!RegExp(r'^[\w\.-]+@[\w\.-]+\.\w+$').hasMatch(_email.text.trim())) {
+      setState(() {
+        _errorMessage = "Email invalide.";
+      });
+      return;
+    }
+
+    final url = Uri.parse("http://localhost/gymapi/login.php");
+
+    try {
+      final response = await http.post(url, body: {
+        "email": _email.text.trim(),
+        "password": _password.text.trim(),
+      });
+
+      final data = jsonDecode(response.body);
+
+      if (data["status"] == "success") {
+        setState(() => _successMessage = "Connexion réussie !");
+
+        Future.delayed(const Duration(seconds: 1), () {
+          Navigator.pushReplacementNamed(context, '/app');
+        });
+      } else {
+        setState(() => _errorMessage = data["message"]);
+      }
+    } catch (e) {
+      setState(() {
+        _errorMessage = "Erreur de connexion. Vérifiez WAMP.";
+      });
+    }
   }
 
+  // --------------------------
+  // UI
+  // --------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: SingleChildScrollView(
         child: Column(
           children: [
+            // HEADER ROUGE
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 56, horizontal: 28),
@@ -68,11 +125,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ],
               ),
             ),
+
+            // FORMULAIRE LOGIN
             Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 28.0,
-                vertical: 30,
-              ),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 28.0, vertical: 30),
               child: Column(
                 children: [
                   const Text(
@@ -85,48 +142,46 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(color: Colors.grey),
                   ),
                   const SizedBox(height: 24),
+
                   CustomTextField(
                     controller: _email,
                     label: 'Email Address',
                     keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 16),
+
                   CustomTextField(
                     controller: _password,
                     label: 'Password',
                     obscureText: !_pwVisible,
                     suffix: IconButton(
                       icon: Icon(
-                        _pwVisible ? Icons.visibility : Icons.visibility_off,
-                      ),
-                      onPressed: () => setState(() => _pwVisible = !_pwVisible),
+                          _pwVisible ? Icons.visibility : Icons.visibility_off),
+                      onPressed: () =>
+                          setState(() => _pwVisible = !_pwVisible),
                     ),
                   ),
-                  const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Checkbox(
-                            value: _remember,
-                            activeColor: AppColors.red700,
-                            onChanged:
-                                (v) => setState(() => _remember = v ?? false),
-                          ),
-                          const Text('Remember me'),
-                        ],
-                      ),
-                      TextButton(
-                        onPressed: () {},
-                        child: const Text(
-                          'Forgot password?',
-                          style: TextStyle(color: AppColors.red700),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
+
+                  // Messages d’erreur ou succès
+                  if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(_errorMessage!,
+                          style: const TextStyle(
+                              color: Colors.red, fontWeight: FontWeight.bold)),
+                    ),
+
+                  if (_successMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Text(_successMessage!,
+                          style: const TextStyle(
+                              color: Colors.green, fontWeight: FontWeight.bold)),
+                    ),
+
+                  const SizedBox(height: 18),
+
+                  // BOUTON LOGIN
                   SizedBox(
                     width: double.infinity,
                     height: 48,
@@ -141,30 +196,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       child: const Text(
                         'Sign In',
                         style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                            fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),
+
                   const SizedBox(height: 18),
+
                   GestureDetector(
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pushNamed(context, '/register');
+                    },
                     child: const Text.rich(
                       TextSpan(
-                        text: "Don’t have access? ",
+                        text: "Vous n’avez pas de compte ? ",
                         children: [
                           TextSpan(
-                            text: "Contact your system administrator",
-                            style: TextStyle(
-                              color: AppColors.red700,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                              text: "Créez-en un",
+                              style: TextStyle(
+                                  color: AppColors.red700,
+                                  fontWeight: FontWeight.bold))
                         ],
                       ),
                     ),
-                  ),
+                  )
                 ],
               ),
             ),

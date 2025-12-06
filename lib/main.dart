@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'theme/app_colors.dart';
 import 'screens/login_screen.dart';
+import 'screens/RegisterScreen.dart';
 import 'screens/dashboard_screen.dart';
 import 'navigation/bottom_nav.dart';
 
@@ -31,6 +32,7 @@ class GymMasterApp extends StatelessWidget {
         '/': (c) => const LoginScreen(),
         '/dashboard': (c) => const DashboardScreen(),
         '/app': (c) => const BottomNav(),
+         '/register': (c) => const RegisterScreen(), 
       },
     );
   }

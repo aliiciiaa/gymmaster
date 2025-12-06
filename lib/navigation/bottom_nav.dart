@@ -7,6 +7,7 @@ import '../screens/finance_screen.dart';
 import '../screens/shop_screen.dart'; 
 import '../theme/app_colors.dart';
 
+
 class BottomNav extends StatefulWidget {
   const BottomNav({super.key});
 
