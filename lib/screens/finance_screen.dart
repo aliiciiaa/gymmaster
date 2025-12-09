@@ -1,102 +1,234 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:http/http.dart' as http;
 
-class FinanceScreen extends StatelessWidget {
+class FinanceScreen extends StatefulWidget {
   const FinanceScreen({super.key});
 
   @override
+  State<FinanceScreen> createState() => _FinanceScreenState();
+}
+
+class _FinanceScreenState extends State<FinanceScreen> {
+  bool loading = true;
+
+  int income = 0;
+  int expenses = 0;
+  int profit = 0;
+
+  List<Map<String, dynamic>> monthly = [];
+  List<Map<String, dynamic>> transactions = [];
+
+  String filter = "all"; // "all", "income", "expense", "summary"
+
+  @override
+  void initState() {
+    super.initState();
+    loadFinance();
+  }
+
+  Future<void> loadFinance() async {
+    var url = Uri.parse("http://localhost/gymapi/get_finance.php");
+    var res = await http.get(url);
+
+    List<String> lines = res.body.split("\n");
+
+    for (var line in lines) {
+      line = line.trim();
+      if (line.isEmpty) continue;
+
+      // TOTALS
+      if (line.startsWith("INCOME=")) {
+        income = int.parse(line.split("=")[1]);
+      } 
+      else if (line.startsWith("EXPENSES=")) {
+        expenses = int.parse(line.split("=")[1]);
+      } 
+      else if (line.startsWith("PROFIT=")) {
+        profit = int.parse(line.split("=")[1]);
+      } 
+
+      // MONTHLY
+      else if (line.startsWith("MONTH=")) {
+        var parts = line.split(";");
+        monthly.add({
+          "month": parts[0].split("=")[1],
+          "income": double.parse(parts[1].split("=")[1]),
+          "expenses": double.parse(parts[2].split("=")[1]),
+        });
+      }
+
+      // TRANSACTIONS
+      else if (line.startsWith("TRANSACTION=")) {
+  var parts = line.replaceFirst("TRANSACTION=", "").split(";");
+
+  if (parts.length < 3) continue; // 3 éléments, pas 4 !
+
+  String type = parts[0].trim();   // Income ou Expense
+  String category = parts[1].trim();
+  double amount = double.tryParse(parts[2].trim()) ?? 0;
+
+  transactions.add({
+    "category": category,
+    "amount": amount,
+    "isIncome": type.toLowerCase() == "income",
+  });
+}
+
+
+    }
+
+    setState(() {
+      loading = false;
+    });
+  }
+
+  double currentMonthIncome() => monthly.isEmpty ? 0 : monthly.last["income"];
+  double currentMonthExpenses() => monthly.isEmpty ? 0 : monthly.last["expenses"];
+  double currentMonthProfit() => currentMonthIncome() - currentMonthExpenses();
+
+  @override
   Widget build(BuildContext context) {
+    if (loading) return const Scaffold(body: Center(child: CircularProgressIndicator()));
+
+    // Filtrage transactions
+    List<Map<String, dynamic>> displayedTransactions;
+if (filter == "income") {
+  displayedTransactions = transactions.where((t) => t["isIncome"]).toList();
+} else if (filter == "expense") {
+  displayedTransactions = transactions.where((t) => !t["isIncome"]).toList();
+} else {
+  displayedTransactions = transactions; // "all" ou autre
+}
+
+
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        title: const Text("Finances"),
-        backgroundColor: Colors.white,
-        elevation: 0,
-      ),
+      appBar: AppBar(title: const Text("Finances"), backgroundColor: Colors.white, elevation: 0),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _buildSummaryCard(
-              title: "Total Income",
-              amount: "87 500 DA",
-              icon: Icons.trending_up,
-              color: Colors.green,
-            ),
+            _buildSummaryCard("Total Income", "$income DA", Icons.trending_up, Colors.green),
             const SizedBox(height: 12),
-            _buildSummaryCard(
-              title: "Total Expenses",
-              amount: "45 200 DA",
-              icon: Icons.trending_down,
-              color: Colors.red,
-            ),
+            _buildSummaryCard("Total Expenses", "$expenses DA", Icons.trending_down, Colors.red),
             const SizedBox(height: 12),
-            _buildSummaryCard(
-              title: "Net Profit",
-              amount: "42 300 DA",
-              icon: Icons.attach_money,
-              color: Colors.blue,
-            ),
+            _buildSummaryCard("Net Profit", "$profit DA", Icons.attach_money, Colors.blue),
             const SizedBox(height: 20),
-            const Text(
-              "Monthly Comparison",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
+
+            const Text("Monthly Trend", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
+
             SizedBox(
-              height: 250,
+              height: 200,
               child: BarChart(
                 BarChartData(
-                  borderData: FlBorderData(show: false),
                   titlesData: FlTitlesData(
-                    leftTitles: const AxisTitles(),
-                    topTitles: const AxisTitles(),
-                    rightTitles: const AxisTitles(),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (value, meta) {
-                          const labels = ["Sep", "Oct", "Nov", "Dec", "Jan"];
-                          if (value < 0 || value > 4) return Container();
-                          return Text(labels[value.toInt()]);
+                          int index = value.toInt();
+                          if (index < 0 || index >= monthly.length) return Container();
+                          return Text(monthly[index]["month"]);
                         },
                       ),
                     ),
+                    leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: true)),
                   ),
-                  barGroups: [
-                    _bar(0, income: 35000, expenses: 25000),
-                    _bar(1, income: 38000, expenses: 27000),
-                    _bar(2, income: 36000, expenses: 24000),
-                    _bar(3, income: 58000, expenses: 26000),
-                    _bar(4, income: 40000, expenses: 25000),
+                  gridData: FlGridData(show: true),
+                  borderData: FlBorderData(show: false),
+                  barGroups: List.generate(monthly.length, (i) {
+                    return BarChartGroupData(
+                      x: i,
+                      barsSpace: 6,
+                      barRods: [
+                        BarChartRodData(toY: monthly[i]["expenses"], width: 16, color: Colors.red),
+                        BarChartRodData(toY: monthly[i]["income"], width: 16, color: Colors.green),
+                      ],
+                    );
+                  }),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 28),
+
+            // Transactions Card
+            Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              color: Colors.white,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text("Transactions", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 12),
+                    Row(
+  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  children: [
+    ElevatedButton(
+      onPressed: () => setState(() => filter = "all"),
+      style: ElevatedButton.styleFrom(
+          backgroundColor: filter == "all" ? Colors.grey.shade700 : Colors.grey),
+      child: const Text("All"),
+    ),
+    ElevatedButton(
+      onPressed: () => setState(() => filter = "income"),
+      style: ElevatedButton.styleFrom(
+          backgroundColor: filter == "income" ? Colors.green : Colors.grey),
+      child: const Text("Income"),
+    ),
+    ElevatedButton(
+      onPressed: () => setState(() => filter = "expense"),
+      style: ElevatedButton.styleFrom(
+          backgroundColor: filter == "expense" ? Colors.red : Colors.grey),
+      child: const Text("Expenses"),
+    ),
+    ElevatedButton(
+      onPressed: () => setState(() => filter = "summary"),
+      style: ElevatedButton.styleFrom(
+          backgroundColor: filter == "summary" ? Colors.blue : Colors.grey),
+      child: const Text("Summary"),
+    ),
+  ],
+),
+
+                    const SizedBox(height: 12),
+
+                    if (filter == "summary")
+                      Column(
+                        children: [
+                          _buildSummaryCard("Income This Month", "${currentMonthIncome()} DA", Icons.trending_up, Colors.green),
+                          const SizedBox(height: 12),
+                          _buildSummaryCard("Expenses This Month", "${currentMonthExpenses()} DA", Icons.trending_down, Colors.red),
+                          const SizedBox(height: 12),
+                          _buildSummaryCard("Profit This Month", "${currentMonthProfit()} DA", Icons.attach_money, Colors.blue),
+                        ],
+                      )
+                    else
+                      Column(
+                        children: [
+                          for (var t in displayedTransactions)
+                            _transaction(
+                              t["category"].toLowerCase() == "salary" ? "Salary (Expense)" : t["category"],
+                              "${t["amount"]} DA",
+                              t["isIncome"],
+                            ),
+                        ],
+                      ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 28),
-            const Text(
-              "Transactions",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            const SizedBox(height: 12),
-            _transaction("Monthly Membership - Sarah Johnson", "5 000 DA"),
-            _transaction("Personal Training - Mike Davis", "3 500 DA"),
-            _transaction("Monthly Membership - Alex Rodriguez", "5 000 DA"),
-            _transaction("Supplement Sale", "1 200 DA"),
-            _transaction("New Member Registration", "8 600 DA"),
           ],
         ),
       ),
     );
   }
 
-  /// ---- SUMMARY CARD ----
-  Widget _buildSummaryCard({
-    required String title,
-    required String amount,
-    required IconData icon,
-    required Color color,
-  }) {
+  Widget _buildSummaryCard(String title, String amount, IconData icon, Color color) {
     return Card(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: Padding(
@@ -108,15 +240,9 @@ class FinanceScreen extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600)),
+                Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 4),
-                Text(amount,
-                    style: TextStyle(
-                        fontSize: 20,
-                        color: color,
-                        fontWeight: FontWeight.bold)),
+                Text(amount, style: TextStyle(fontSize: 20, color: color, fontWeight: FontWeight.bold)),
               ],
             ),
           ],
@@ -125,38 +251,13 @@ class FinanceScreen extends StatelessWidget {
     );
   }
 
-  /// ---- BAR CHART BUILDER ----
-  BarChartGroupData _bar(int x,
-      {required double income, required double expenses}) {
-    return BarChartGroupData(
-      x: x,
-      barsSpace: 6,
-      barRods: [
-        BarChartRodData(
-          toY: expenses,
-          width: 16,
-          color: Colors.redAccent,
-        ),
-        BarChartRodData(
-          toY: income,
-          width: 16,
-          color: Colors.grey.shade700,
-        ),
-      ],
-    );
-  }
-
-  /// ---- TRANSACTION ITEM ----
-  Widget _transaction(String title, String amount) {
+  Widget _transaction(String title, String amount, bool isIncome) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       child: ListTile(
         title: Text(title),
-        trailing: Text(
-          "+ $amount",
-          style:
-              const TextStyle(color: Colors.green, fontWeight: FontWeight.bold),
-        ),
+        trailing: Text((isIncome ? "+ " : "- ") + amount,
+            style: TextStyle(color: isIncome ? Colors.green : Colors.red, fontWeight: FontWeight.bold)),
       ),
     );
   }

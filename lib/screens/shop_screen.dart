@@ -1,10 +1,87 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../theme/app_colors.dart';
+import 'package:http/http.dart' as http;
 
-class ShopScreen extends StatelessWidget {
+class ShopScreen extends StatefulWidget {
   const ShopScreen({super.key});
 
+  @override
+  State<ShopScreen> createState() => _ShopScreenState();
+}
+
+class _ShopScreenState extends State<ShopScreen> {
+  // ---- API URL ----
+  final String apiUrl = "http://localhost/gymapi/get_shop.php";
+
+  // ---- VARIABLES ----
+  int totalProducts = 0;
+  int lowStock = 0;
+  int totalSales = 0;
+
+  List<Map<String, dynamic>> categorySales = [];
+  List<Map<String, dynamic>> products = [];
+
+  bool loading = true;
+
+  // ---------------------------------------------------------
+  @override
+  void initState() {
+    super.initState();
+    loadShopData();
+  }
+
+  // ---------------------------------------------------------
+  Future<void> loadShopData() async {
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode != 200) return;
+
+      List<String> lines = response.body.split("\n");
+
+      categorySales.clear();
+      products.clear();
+
+      for (String line in lines) {
+        if (line.startsWith("TOTAL_PRODUCTS=")) {
+          totalProducts = int.parse(line.split("=")[1]);
+        }
+
+        else if (line.startsWith("LOW_STOCK=")) {
+          lowStock = int.parse(line.split("=")[1]);
+        }
+
+        else if (line.startsWith("TOTAL_SALES=")) {
+          totalSales = int.parse(line.split("=")[1]);
+        }
+
+        else if (line.startsWith("CATEGORY=")) {
+          var parts = line.replaceFirst("CATEGORY=", "").split(";TOTAL=");
+          categorySales.add({
+            "category": parts[0],
+            "total": int.parse(parts[1])
+          });
+        }
+
+        else if (line.startsWith("PRODUCT=")) {
+          var p = line.replaceFirst("PRODUCT=", "").split(";");
+          products.add({
+            "name": p[0],
+            "category": p[1],
+            "stock": int.parse(p[2]),
+            "price": int.parse(p[3]),
+          });
+        }
+      }
+    } catch (e) {
+      print("ERROR SHOP: $e");
+    }
+
+    setState(() => loading = false);
+  }
+
+  // ---------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -14,137 +91,97 @@ class ShopScreen extends StatelessWidget {
         backgroundColor: Colors.white,
         elevation: 0,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // ---- TOP STATS ----
-          Row(
-            children: [
-              Expanded(child: _statCard("Total Products", "8", Icons.shop)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _statCard(
-                  "Low Stock",
-                  "2",
-                  Icons.warning_amber_rounded,
-                  color: Colors.orange,
+
+      body: loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                // ---- TOP STATS ----
+                Row(
+                  children: [
+                    Expanded(
+                      child: _statCard(
+                        "Total Products",
+                        "$totalProducts",
+                        Icons.shop,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _statCard(
+                        "Low Stock",
+                        "$lowStock",
+                        Icons.warning_amber_rounded,
+                        color: Colors.orange,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _statCard(
-            "Total Sales This Month",
-            "265 100 DA",
-            Icons.trending_up,
-            color: Colors.green,
-          ),
 
-          const SizedBox(height: 25),
-          const Text(
-            "Sales by Category",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
-          // ---- PIE CHART ----
-          SizedBox(
-            height: 220,
-            child: PieChart(
-              PieChartData(
-                sections: [
-                  PieChartSectionData(
-                    color: Colors.red,
-                    value: 60,
-                    title: "Supplements 60%",
-                    radius: 60,
-                    titleStyle:
-                        const TextStyle(fontSize: 12, color: Colors.white),
+                _statCard(
+                  "Total Sales This Month",
+                  "$totalSales DA",
+                  Icons.trending_up,
+                  color: Colors.green,
+                ),
+
+                const SizedBox(height: 25),
+
+                const Text(
+                  "Sales by Category",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+
+                // ---- PIE CHART ----
+                SizedBox(
+                  height: 220,
+                  child: PieChart(
+                    PieChartData(
+                      sections: categorySales.map((s) {
+                        double totalLocal = categorySales.fold(
+                            0, (sum, item) => sum + item["total"]);
+                        double percent =
+                            (s["total"] / totalLocal) * 100;
+
+                        return PieChartSectionData(
+                          color: _getCategoryColor(s["category"]),
+                          value: percent,
+                          radius: 60,
+                          title:
+                              "${s["category"]} ${percent.toStringAsFixed(1)}%",
+                          titleStyle: const TextStyle(
+                              fontSize: 12, color: Colors.white),
+                        );
+                      }).toList(),
+                    ),
                   ),
-                  PieChartSectionData(
-                    color: Colors.grey.shade800,
-                    value: 25,
-                    title: "Accessories 25%",
-                    radius: 55,
-                    titleStyle:
-                        const TextStyle(fontSize: 12, color: Colors.white),
-                  ),
-                  PieChartSectionData(
-                    color: Colors.grey.shade400,
-                    value: 15,
-                    title: "Equipment 15%",
-                    radius: 50,
-                    titleStyle:
-                        const TextStyle(fontSize: 12, color: Colors.black),
-                  ),
-                ],
-              ),
+                ),
+
+                const SizedBox(height: 25),
+
+                const Text(
+                  "Products",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 10),
+
+                // ---- PRODUCT LIST ----
+                ...products.map((p) {
+                  return _productCard(
+                    name: p["name"],
+                    category: p["category"],
+                    stock: p["stock"],
+                    price: "${p["price"]} DA",
+                    lowStock: p["stock"] < 5,
+                  );
+                }),
+              ],
             ),
-          ),
 
-          const SizedBox(height: 25),
-
-          // ---- PRODUCT LIST ----
-          const Text(
-            "Products",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 10),
-
-          _productCard(
-            name: "Whey Protein 2kg",
-            category: "Supplements",
-            stock: 15,
-            price: "5 800 DA",
-          ),
-          _productCard(
-            name: "Creatine Monohydrate",
-            category: "Supplements",
-            stock: 8,
-            price: "3 200 DA",
-          ),
-          _productCard(
-            name: "Pre-Workout Energy",
-            category: "Supplements",
-            stock: 3,
-            price: "4 000 DA",
-            lowStock: true,
-          ),
-          _productCard(
-            name: "Gym Water Bottle",
-            category: "Accessories",
-            stock: 12,
-            price: "1 200 DA",
-          ),
-          _productCard(
-            name: "Resistance Bands Set",
-            category: "Equipment",
-            stock: 12,
-            price: "2 400 DA",
-          ),
-          _productCard(
-            name: "Protein Bars (Box)",
-            category: "Snacks",
-            stock: 3,
-            price: "3 500 DA",
-            lowStock: true,
-          ),
-          _productCard(
-            name: "Gym Towel",
-            category: "Accessories",
-            stock: 18,
-            price: "900 DA",
-          ),
-          _productCard(
-            name: "Workout Gloves",
-            category: "Accessories",
-            stock: 7,
-            price: "1 600 DA",
-          ),
-        ],
-      ),
-
-      // ---- ADD BUTTON ----
       floatingActionButton: FloatingActionButton(
         onPressed: () {},
         backgroundColor: AppColors.red700,
@@ -153,9 +190,21 @@ class ShopScreen extends StatelessWidget {
     );
   }
 
-  // ---------------------------------------------------------------------------
+  // ---------------------------------------------------------
+  Color _getCategoryColor(String category) {
+    switch (category) {
+      case "Supplements":
+        return Colors.red;
+      case "Accessories":
+        return Colors.grey.shade800;
+      case "Equipment":
+        return Colors.grey.shade400;
+      default:
+        return Colors.blue;
+    }
+  }
 
-  /// ---- STAT CARD ----
+  // ---------------------------------------------------------
   Widget _statCard(String title, String value, IconData icon,
       {Color color = Colors.blue}) {
     return Card(
@@ -186,9 +235,7 @@ class ShopScreen extends StatelessWidget {
     );
   }
 
-  // ---------------------------------------------------------------------------
-
-  /// ---- PRODUCT CARD ----
+  // ---------------------------------------------------------
   Widget _productCard({
     required String name,
     required String category,
@@ -205,42 +252,28 @@ class ShopScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ---- LEFT SIDE (Name + Category + Stock + Price) ----
+            // ---- LEFT ----
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text(name,
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 4),
-                Text(
-                  category,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey.shade700,
-                  ),
-                ),
+                Text(category,
+                    style: TextStyle(
+                        fontSize: 14, color: Colors.grey.shade700)),
                 const SizedBox(height: 8),
-                Text(
-                  "Stock: $stock",
-                  style: const TextStyle(fontSize: 14),
-                ),
-                Text(
-                  price,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+                Text("Stock: $stock", style: const TextStyle(fontSize: 14)),
+                Text(price,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold)),
               ],
             ),
 
-            // ---- RIGHT SIDE (Badge + Sell Button) ----
+            // ---- RIGHT ----
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -262,10 +295,8 @@ class ShopScreen extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     padding:
                         const EdgeInsets.symmetric(horizontal: 22, vertical: 4),
-                    side: const BorderSide(
-                      color: AppColors.red700,
-                      width: 1.3,
-                    ),
+                    side:
+                        const BorderSide(color: AppColors.red700, width: 1.3),
                   ),
                   child: const Text(
                     "Sell",

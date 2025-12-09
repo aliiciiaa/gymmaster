@@ -8,12 +8,16 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+
+  http: ^1.6.0
+  image_picker: ^0.8.7+4
+  path: ^1.8.3
+
   cupertino_icons: ^1.0.6
   flutter_svg: ^2.0.9
   fl_chart: ^0.69.0
   flutter_vector_icons: ^2.0.0
-  google_fonts: ^6.3.2
-  image_picker: ^1.0.7
+  google_fonts: ^4.0.4   # ⬅️ VERSION STABLE POUR FLUTTER WEB
 
 dev_dependencies:
   flutter_test:

@@ -70,7 +70,12 @@ class _LoginScreenState extends State<LoginScreen> {
         setState(() => _successMessage = "Connexion réussie !");
 
         Future.delayed(const Duration(seconds: 1), () {
-          Navigator.pushReplacementNamed(context, '/app');
+          Navigator.pushReplacementNamed(
+  context,
+  '/app',
+  arguments: data["user"]["id"],  // ← ID envoyé
+);
+
         });
       } else {
         setState(() => _errorMessage = data["message"]);

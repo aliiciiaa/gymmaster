@@ -9,7 +9,9 @@ import '../theme/app_colors.dart';
 
 
 class BottomNav extends StatefulWidget {
-  const BottomNav({super.key});
+  final int userId; // <-- ajoute ça
+
+  const BottomNav({super.key, required this.userId});
 
   @override
   State<BottomNav> createState() => _BottomNavState();
@@ -18,14 +20,20 @@ class BottomNav extends StatefulWidget {
 class _BottomNavState extends State<BottomNav> {
   int _currentIndex = 0;
 
-  final List<Widget> _pages = const [
-    DashboardScreen(),
-    MembersScreen(),
-    CoachesScreen(),
-    FinanceScreen(),
-    ShopScreen(), // ✅ Ajouté ici
-    SettingsScreen(),
-  ];
+  late final List<Widget> _pages;
+
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      DashboardScreen(),
+      MembersScreen(),
+      CoachesScreen(),
+      FinanceScreen(),
+      ShopScreen(),
+      SettingsScreen(userId: widget.userId), // <-- passer userId ici
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,3 +75,4 @@ class _BottomNavState extends State<BottomNav> {
     );
   }
 }
+

@@ -31,7 +31,11 @@ class GymMasterApp extends StatelessWidget {
       routes: {
         '/': (c) => const LoginScreen(),
         '/dashboard': (c) => const DashboardScreen(),
-        '/app': (c) => const BottomNav(),
+        '/app': (c) {
+  final args = ModalRoute.of(c)!.settings.arguments as int;
+  return BottomNav(userId: args);
+},
+
          '/register': (c) => const RegisterScreen(), 
       },
     );

@@ -2,10 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class ChartWidget extends StatelessWidget {
-  const ChartWidget({super.key});
+  final List<dynamic> data;
+
+  const ChartWidget({super.key, required this.data});
 
   @override
   Widget build(BuildContext context) {
+    // Convertir income
+    final incomeSpots = data.asMap().entries.map((e) {
+      return FlSpot(
+        e.key.toDouble(),
+        (e.value["income"] as num).toDouble(),
+      );
+    }).toList();
+
+    // Convertir expenses
+    final expenseSpots = data.asMap().entries.map((e) {
+      return FlSpot(
+        e.key.toDouble(),
+        (e.value["expense"] as num).toDouble(),
+      );
+    }).toList();
+
     return LineChart(
       LineChartData(
         gridData: const FlGridData(show: true, drawVerticalLine: false),
@@ -18,7 +36,7 @@ class ChartWidget extends StatelessWidget {
               showTitles: true,
               interval: 1,
               getTitlesWidget: (value, meta) {
-                const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
                 if (value >= 0 && value < days.length) {
                   return Text(days[value.toInt()]);
                 }
@@ -31,35 +49,19 @@ class ChartWidget extends StatelessWidget {
         ),
         borderData: FlBorderData(show: false),
         lineBarsData: [
+          // Income (ROUGE)
           LineChartBarData(
             isCurved: true,
             color: Colors.red,
             barWidth: 3,
-            belowBarData: BarAreaData(show: false),
-            spots: const [
-              FlSpot(0, 2200),
-              FlSpot(1, 3100),
-              FlSpot(2, 2900),
-              FlSpot(3, 3400),
-              FlSpot(4, 4200),
-              FlSpot(5, 5800),
-              FlSpot(6, 5000),
-            ],
+            spots: incomeSpots,
           ),
+          // Expense (BLEU)
           LineChartBarData(
             isCurved: true,
-            color: Colors.grey,
-            barWidth: 2,
-            belowBarData: BarAreaData(show: false),
-            spots: const [
-              FlSpot(0, 1400),
-              FlSpot(1, 1800),
-              FlSpot(2, 1600),
-              FlSpot(3, 1900),
-              FlSpot(4, 2300),
-              FlSpot(5, 2700),
-              FlSpot(6, 2100),
-            ],
+            color: Colors.blue,
+            barWidth: 3,
+            spots: expenseSpots,
           ),
         ],
       ),
