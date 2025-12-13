@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import '../models/athlete.dart';
 import 'package:path/path.dart' as path;
-
+import '../models/coach.dart';
 class ApiService {
   static const String base = "http://192.168.1.66/gymapi";
 
@@ -25,7 +25,26 @@ class ApiService {
       throw Exception("HTTP Error: ${response.statusCode}");
     }
   }
-
+// services/api_service.dart
+static Future<List<Coach>> getCoaches() async {
+  final url = Uri.parse("$base/get_coaches.php");
+  
+  try {
+    final response = await http.get(url);
+    
+    if (response.statusCode == 200) {
+      final body = response.body.trim();
+      if (body.isEmpty) return [];
+      
+      final List data = jsonDecode(body);
+      return data.map((e) => Coach.fromJson(e)).toList();
+    } else {
+      throw Exception("HTTP Error: ${response.statusCode}");
+    }
+  } catch (e) {
+    throw Exception("Failed to fetch coaches: $e");
+  }
+}
   /// ADD ATHLETE — multipart
   static Future<bool> addAthlete({
     required String firstName,

@@ -18,6 +18,10 @@ class Athlete {
   });
 
   factory Athlete.fromJson(Map<String, dynamic> j) {
+  String? image = j['image'];
+  if (image != null && image.isNotEmpty) {
+    image = image.trim().replaceAll('\r\n', '').replaceAll('\n', '');
+  }
     return Athlete(
       id: int.parse(j['id'].toString()),
       firstName: j['first_name'] ?? '',

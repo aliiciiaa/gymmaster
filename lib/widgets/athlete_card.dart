@@ -17,7 +17,7 @@ class AthleteCard extends StatelessWidget {
   });
 
   Color getStatusColor() {
-    if (status.toLowerCase().contains("active")) return Colors.black;
+    if (status.toLowerCase().contains("active")) return Colors.green;
     if (status.toLowerCase().contains("expiring")) return Colors.orange;
     if (status.toLowerCase().contains("expired")) return Colors.red;
     return Colors.grey;
@@ -31,53 +31,126 @@ class AthleteCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundImage: imageUrl.isNotEmpty
-                ? NetworkImage(imageUrl.replaceAll("localhost", "192.168.1.66"))
-                : null,
-            child: imageUrl.isEmpty
-                ? const Icon(Icons.person)
-                : null,
+          // AVATAR AVEC GESTION D'ERREUR
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.grey[200],
+            ),
+            child: ClipOval(
+              child: _buildAvatar(),
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w600, fontSize: 16)),
+                Text(
+                  name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(subscription,
-                    style: const TextStyle(color: Colors.grey)),
+                Text(
+                  subscription,
+                  style: TextStyle(color: Colors.grey[600]),
+                ),
                 const SizedBox(height: 2),
-                Text("Expires: $expires",
-                    style:
-                        const TextStyle(color: Colors.grey, fontSize: 12)),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.calendar_today,
+                      size: 12,
+                      color: Colors.grey[500],
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      "Expires: $expires",
+                      style: TextStyle(
+                        color: Colors.grey[600],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: getStatusColor().withOpacity(0.15),
+              color: getStatusColor().withOpacity(0.1),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: getStatusColor(), width: 1),
             ),
             child: Text(
               status,
               style: TextStyle(
-                  color: getStatusColor(), fontWeight: FontWeight.w600),
+                color: getStatusColor(),
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
             ),
           ),
-          const SizedBox(width: 8),
-          const Icon(Icons.chevron_right, color: Colors.grey),
         ],
       ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    if (imageUrl.isEmpty) {
+      return Center(
+        child: Icon(
+          Icons.person,
+          size: 28,
+          color: Colors.grey[500],
+        ),
+      );
+    }
+
+    // Nettoyer l'URL
+    String url = imageUrl.trim();
+    url = url.replaceAll('\r\n', '').replaceAll('\n', '');
+
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) {
+        return Center(
+          child: Icon(
+            Icons.person,
+            size: 28,
+            color: Colors.grey[500],
+          ),
+        );
+      },
+      loadingBuilder: (context, child, loadingProgress) {
+        if (loadingProgress == null) return child;
+        return Center(
+          child: CircularProgressIndicator(
+            strokeWidth: 2,
+            value: loadingProgress.expectedTotalBytes != null
+                ? loadingProgress.cumulativeBytesLoaded /
+                    loadingProgress.expectedTotalBytes!
+                : null,
+          ),
+        );
+      },
     );
   }
 }
