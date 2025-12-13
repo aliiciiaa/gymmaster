@@ -182,11 +182,7 @@ class _ShopScreenState extends State<ShopScreen> {
               ],
             ),
 
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: AppColors.red700,
-        child: const Icon(Icons.add),
-      ),
+     
     );
   }
 
