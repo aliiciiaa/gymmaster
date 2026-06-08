@@ -5,7 +5,7 @@ import '../models/athlete.dart';
 import 'package:path/path.dart' as path;
 import '../models/coach.dart';
 class ApiService {
-  static const String base = "http://192.168.1.66/gymapi";
+  static const String base = "http://172.20.10.12/gymapi";
 
   /// GET ATHLETES — version POST
   static Future<List<Athlete>> getAthletes() async {
